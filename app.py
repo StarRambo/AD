@@ -5,18 +5,25 @@ import joblib
 import os
 import gdown
 
-st.title("QSAR Model: pIC50 Predictor for Alzheimer's (with ADMET & BBB)")
+st.title("QSAR Model: pIC50 Predictor for Alzheimer's (Classification + Regression)")
 
-# Compressed model path and download link
-model_path = "alz_qsar_admet_bbb_model_compressed.pkl"
-model_url = "https://drive.google.com/uc?id=1cOcNBhnyhq0QfBrdDCRgghvHlMI4sgcd"
+# Define paths and Google Drive IDs
+classifier_path = "alz_qsar_classifier.pkl"
+classifier_url = "https://drive.google.com/uc?id=14W54IDjC6pqjkmDj44zQmQrRdXm4ViwB"
 
-# Download model if not present
-if not os.path.exists(model_path):
-    gdown.download(model_url, model_path, quiet=False)
+regressor_path = "alz_qsar_admet_bbb_model_compressed.pkl"
+regressor_url = "https://drive.google.com/uc?id=1cOcNBhnyhq0QfBrdDCRgghvHlMI4sgcd"
 
-# Load the compressed model
-model = joblib.load(model_path)
+# Download if not already available
+if not os.path.exists(classifier_path):
+    gdown.download(classifier_url, classifier_path, quiet=False)
+
+if not os.path.exists(regressor_path):
+    gdown.download(regressor_url, regressor_path, quiet=False)
+
+# Load models
+clf = joblib.load(classifier_path)
+reg = joblib.load(regressor_path)
 
 uploaded_file = st.file_uploader("Upload CSV with 1022-bit ECFP4 fingerprints", type=["csv"])
 
@@ -28,9 +35,11 @@ if uploaded_file is not None:
         st.error("Expected 1022 fingerprint bits (Bit_0 to Bit_1021).")
     else:
         X = df[bit_columns].values
-        predictions = model.predict(X)
-        df["Predicted_Output"] = predictions
+        df["Class_Prediction"] = clf.predict(X)
+        df["Predicted_pIC50"] = reg.predict(X)
+
         st.success("Prediction complete!")
         st.dataframe(df)
+
         csv = df.to_csv(index=False).encode("utf-8")
-        st.download_button("Download Predictions", csv, "predicted_output.csv", "text/csv")
+        st.download_button("Download Results", csv, "predicted_output.csv", "text/csv")
